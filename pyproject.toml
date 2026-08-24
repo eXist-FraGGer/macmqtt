@@ -1,0 +1,26 @@
+[project]
+name = "macmqtt"
+version = "0.1.0"
+description = "MQTT-мост для управления Mac (громкость/мьют) из любого умного дома"
+requires-python = ">=3.9"
+dependencies = [
+    "paho-mqtt==1.6.1",
+    "pyobjc-framework-Quartz",
+    "pyobjc-framework-ApplicationServices",
+    "rumps",
+]
+
+[project.optional-dependencies]
+# Only needed to build dist/macmqtt.app (scripts/build_app.sh), not at runtime.
+build = ["py2app"]
+
+[project.scripts]
+macmqtt = "macmqtt.cli:main"
+macmqtt-gui = "macmqtt.gui.app:main"
+
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+where = ["src"]

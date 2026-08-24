@@ -1,0 +1,20 @@
+# IDEs and editors
+/.idea
+
+# Python
+__pycache__/
+*.pyc
+*.egg-info/
+
+# venv
+venv/
+
+# py2app build output (regenerate with scripts/build_app.sh)
+build/
+dist/
+
+# macOS
+.DS_Store
+
+# scratch/backup files
+*.bak
