@@ -162,3 +162,6 @@ class SettingsController(NSObject):
 
     def generateSprutConfig_(self, sender):
         help_tab.generate_sprut_config(self, sender)
+
+    def checkUpdate_(self, sender):
+        about_tab.check_update(self, sender)

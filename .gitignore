@@ -13,6 +13,9 @@ venv/
 build/
 dist/
 
+# release archives (regenerate with scripts/make_release.sh)
+release/
+
 # macOS
 .DS_Store
 

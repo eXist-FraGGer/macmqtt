@@ -1,7 +1,19 @@
-from AppKit import NSColor, NSFont, NSImage, NSImageView, NSLineBreakByWordWrapping, NSMakeRect, NSView
+from AppKit import (
+    NSAlert,
+    NSAlertFirstButtonReturn,
+    NSApp,
+    NSColor,
+    NSFont,
+    NSImage,
+    NSImageView,
+    NSLineBreakByWordWrapping,
+    NSMakeRect,
+    NSView,
+)
 
+from ...system import update
 from . import widgets
-from .constants import APP_ICON_PATH, PAD
+from .constants import APP_ICON_PATH, BTN_H, PAD
 
 
 def build(controller, w, h):
@@ -50,6 +62,12 @@ def build(controller, w, h):
     desc_lbl.cell().setLineBreakMode_(NSLineBreakByWordWrapping)
     view.addSubview_(desc_lbl)
 
+    y -= 16 + BTN_H
+    btn_w = 180
+    view.addSubview_(
+        widgets.button(NSMakeRect((w - btn_w) / 2, y, btn_w, BTN_H), "Проверить обновление", controller, "checkUpdate:")
+    )
+
     # Pinned to the bottom, independent of the centered block above.
     copyright_lbl = widgets.label(NSMakeRect(PAD, PAD, inner_w, 14), "Copyright © eXist-FraGGer, 2026", center=True)
     copyright_lbl.setTextColor_(NSColor.tertiaryLabelColor())
@@ -57,3 +75,39 @@ def build(controller, w, h):
     view.addSubview_(copyright_lbl)
 
     return view
+
+
+def check_update(controller, sender):
+    try:
+        latest = update.latest_version()
+    except Exception:
+        widgets.show_info_popup("Не удалось проверить обновление", [("Нет сети или недоступен GitHub.", False)])
+        return
+
+    current = update.current_version()
+    if not update.is_newer(latest, current):
+        widgets.show_info_popup("Обновлений нет", [(f"Установлена последняя версия {current}.", False)])
+        return
+
+    if update.brew_path() is None:
+        # Installed via manually-downloaded .app, not brew — nothing to
+        # script safely, just point at the same download page as before.
+        alert = NSAlert.alloc().init()
+        alert.setMessageText_(f"Доступна версия {latest}")
+        alert.setInformativeText_(f"Установлена {current}. Homebrew не найден — открыть страницу релиза?")
+        alert.addButtonWithTitle_("Открыть")
+        alert.addButtonWithTitle_("Отмена")
+        if alert.runModal() == NSAlertFirstButtonReturn:
+            update.open_release_page()
+        return
+
+    alert = NSAlert.alloc().init()
+    alert.setMessageText_(f"Доступна версия {latest}")
+    alert.setInformativeText_(f"Установлена {current}. Обновить через brew? Приложение перезапустится само.")
+    alert.addButtonWithTitle_("Обновить")
+    alert.addButtonWithTitle_("Отмена")
+    if alert.runModal() != NSAlertFirstButtonReturn:
+        return
+
+    update.upgrade_and_relaunch()
+    NSApp.terminate_(None)
