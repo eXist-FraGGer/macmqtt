@@ -14,8 +14,18 @@ OPTIONS = {
         "CFBundleName": "macmqtt",
         "CFBundleDisplayName": "macmqtt",
         "CFBundleShortVersionString": "0.1.0",
+        "CFBundleVersion": "0.1.0",
+        "NSHumanReadableCopyright": "Copyright © eXist-FraGGer, 2026",
         # Menu bar only app: no Dock icon, no app switcher entry.
         "LSUIElement": True,
+        # SMAppService (Launch at Login) needs Ventura — refuse to open on
+        # older macOS with a clear system message instead of crashing.
+        "LSMinimumSystemVersion": "13.0",
+        # Shown on the Automation permission prompt (activate_app / mute
+        # /volume via osascript send Apple Events) — without this the
+        # prompt has no context, or the app just gets silently blocked
+        # on some macOS versions.
+        "NSAppleEventsUsageDescription": "Нужно, чтобы включать/выключать звук и переключаться на приложения по MQTT-командам.",
     },
     "packages": ["macmqtt", "rumps"],
 }
