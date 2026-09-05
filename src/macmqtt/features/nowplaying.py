@@ -1,4 +1,4 @@
-# Three detection "engines", tried in order, first playing source wins:
+# Four detection "engines", tried in order, first playing source wins:
 #   1. native apps (Music/Spotify) — same AppleScript dictionary shape
 #      (`player state`, `current track`), extremely stable/long-documented.
 #   2. Safari — `do JavaScript ... in`, its own dialect.
@@ -6,6 +6,17 @@
 #      shared AppleScript dictionary (`execute ... javascript`), verified
 #      live against Arc this session. Covers any Chromium browser just by
 #      adding its bundle id below — no per-browser code.
+#   4. Window-title fallback — 1-3 above only ever check each window's
+#      *active* tab. Confirmed live: with hundreds of tabs open, a video
+#      playing in a background tab (or detached into fullscreen/PiP) is
+#      invisible to them, and scanning every tab timed out (>120s at a few
+#      hundred tabs — not viable). But a fullscreen/PiP video player names
+#      its OS window after the video (confirmed live: Arc's normal browser
+#      window has an empty kCGWindowName, its fullscreen video player
+#      doesn't) — CGWindowListCopyWindowInfo reads that instantly, no
+#      subprocess, for any window owned by a process we already trust
+#      (candidates below). Title only, no artist/album/artwork — that
+#      still needs the specific tab, which is what's unreachable here.
 #
 # System-wide "now playing" (MediaRemote.framework, what Control Center's
 # widget uses) was tried and is blocked: confirmed empirically this
@@ -23,6 +34,7 @@ import json
 import time
 
 from AppKit import NSWorkspace
+from Quartz import CGWindowListCopyWindowInfo, kCGNullWindowID, kCGWindowListOptionOnScreenOnly
 
 from .. import osascript as osascript_mod
 from ..helpers.hass import HA_DEVICE_NAME, ha_device
@@ -122,6 +134,28 @@ def _running_bundle_ids():
     return {str(a.bundleIdentifier()) for a in apps if a.bundleIdentifier()}
 
 
+def _candidate_pids():
+    # pid, not bundle id, to cross-reference against CGWindowList's
+    # kCGWindowOwnerPID below.
+    known = set(NATIVE_APPS) | {SAFARI_BUNDLE_ID} | set(CHROMIUM_BROWSERS)
+    apps = NSWorkspace.sharedWorkspace().runningApplications()
+    return {a.processIdentifier() for a in apps if str(a.bundleIdentifier()) in known}
+
+
+def _fullscreen_or_pip_title():
+    pids = _candidate_pids()
+    if not pids:
+        return None
+    windows = CGWindowListCopyWindowInfo(kCGWindowListOptionOnScreenOnly, kCGNullWindowID)
+    for w in windows:
+        if w.get("kCGWindowOwnerPID") not in pids:
+            continue
+        name = (w.get("kCGWindowName") or "").strip()
+        if name:
+            return {"title": name, "artist": "", "album": "", "artwork": ""}
+    return None
+
+
 def _unwrap(raw):
     # osascript's CLI prints a plain AppleScript string result wrapped in
     # its own quoting/escaping (e.g. `null` comes back as the 6-char
@@ -193,7 +227,10 @@ def current_track():
             if info:
                 return info
 
-    return None
+    # Last resort: catches fullscreen/PiP video whose tab isn't the
+    # active one (or is unreachable among hundreds of tabs) — see module
+    # docstring, engine 4. Title only, but instant and no subprocess.
+    return _fullscreen_or_pip_title()
 
 
 def _snapshot():
