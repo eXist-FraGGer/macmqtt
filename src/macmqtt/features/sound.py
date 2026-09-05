@@ -8,6 +8,8 @@ from ..helpers.hass import ha_device
 NX_KEYTYPE_SOUND_UP = 0
 NX_KEYTYPE_SOUND_DOWN = 1
 NX_KEYTYPE_PLAY = 16
+NX_KEYTYPE_NEXT = 17
+NX_KEYTYPE_PREVIOUS = 18
 NX_KEYTYPE_MUTE = 7
 
 # poll()'s starting (last_volume, last_muted) — both unknown, so the first
@@ -44,6 +46,14 @@ def tap_play_pause():
     _media_key(NX_KEYTYPE_PLAY)
 
 
+def tap_next():
+    _media_key(NX_KEYTYPE_NEXT)
+
+
+def tap_previous():
+    _media_key(NX_KEYTYPE_PREVIOUS)
+
+
 def get_volume():
     return int(osascript_mod.osascript("output volume of (get volume settings)"))
 
@@ -74,12 +84,22 @@ def topics(cfg):
         "mute_toggle": f"{base}/mute/toggle",
         "mute_state": f"{base}/mute/state",
         "media_play_pause": f"{base}/media/play_pause",
+        "media_next": f"{base}/media/next",
+        "media_previous": f"{base}/media/previous",
     }
 
 
 def subscribe_topics(cfg):
     t = topics(cfg)
-    return [t["volume_set"], t["volume_step"], t["mute_set"], t["mute_toggle"], t["media_play_pause"]]
+    return [
+        t["volume_set"],
+        t["volume_step"],
+        t["mute_set"],
+        t["mute_toggle"],
+        t["media_play_pause"],
+        t["media_next"],
+        t["media_previous"],
+    ]
 
 
 def discovery_configs(cfg, availability_topic):
@@ -147,6 +167,28 @@ def discovery_configs(cfg, availability_topic):
                 "device": device,
             },
         ),
+        (
+            f"homeassistant/button/{device_id}_next_track/config",
+            {
+                "name": "MacBook Next Track",
+                "unique_id": f"{device_id}_next_track",
+                "command_topic": t["media_next"],
+                "payload_press": "PRESS",
+                "availability_topic": availability_topic,
+                "device": device,
+            },
+        ),
+        (
+            f"homeassistant/button/{device_id}_previous_track/config",
+            {
+                "name": "MacBook Previous Track",
+                "unique_id": f"{device_id}_previous_track",
+                "command_topic": t["media_previous"],
+                "payload_press": "PRESS",
+                "availability_topic": availability_topic,
+                "device": device,
+            },
+        ),
     ]
 
 
@@ -165,6 +207,12 @@ def handle(client, cfg, topic, payload):
             tap_mute()
         elif topic == t["media_play_pause"]:
             tap_play_pause()
+            return True
+        elif topic == t["media_next"]:
+            tap_next()
+            return True
+        elif topic == t["media_previous"]:
+            tap_previous()
             return True
         else:
             return False

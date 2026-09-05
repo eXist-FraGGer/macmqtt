@@ -7,8 +7,8 @@ import threading
 _lock = threading.Lock()
 
 
-def osascript(expr):
+def osascript(expr, timeout=5):
     with _lock:
         return subprocess.run(
-            ["osascript", "-e", expr], capture_output=True, text=True, timeout=5
+            ["osascript", "-e", expr], capture_output=True, text=True, timeout=timeout
         ).stdout.strip()

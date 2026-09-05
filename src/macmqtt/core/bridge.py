@@ -4,14 +4,14 @@ import threading
 
 import paho.mqtt.client as mqtt
 
-from ..features import sound, source
+from ..features import nowplaying, sound, source
 
 # Registry of MQTT-triggered domains. Adding a new one (say, brightness)
 # means writing features/brightness.py with the same small contract
 # (topics/subscribe_topics/discovery_configs/handle, optionally
 # poll+INITIAL_POLL_STATE for features with live state to report) and
 # adding it here — nothing else in this file changes.
-FEATURES = (sound, source)
+FEATURES = (sound, source, nowplaying)
 
 POLL_INTERVAL = 3
 

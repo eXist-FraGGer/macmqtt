@@ -22,6 +22,7 @@ def ha_device(device_id):
     so HA groups them all under one device card instead of one per entity."""
     return {"identifiers": [f"{device_id}_bridge"], "name": HA_DEVICE_NAME, "manufacturer": "Apple"}
 
+
 _TEMPLATE_YAML = '''\
 # templates/%(device_id)s_volume.yaml — put in templates/, needs
 # `template: !include_dir_merge_list templates/` in configuration.yaml.
@@ -39,10 +40,16 @@ _MEDIA_PLAYER_YAML = '''\
   name: %(display_name)s
   unique_id: %(device_id)s_media_player
   device_class: tv
-  state_template: "on"
+  # Real state now (Music/Spotify/Safari/Chromium — see features/nowplaying.py),
+  # not a guess: "playing" or "idle", whichever the sensor below reports.
+  state_template: "{{ states('sensor.%(prefix)s_now_playing') }}"
   attributes:
     volume_level: sensor.%(device_id)s_volume_fraction
     is_volume_muted: switch.%(prefix)s_mute
+    media_title: sensor.%(prefix)s_now_playing|title
+    media_artist: sensor.%(prefix)s_now_playing|artist
+    media_album_name: sensor.%(prefix)s_now_playing|album
+    entity_picture: sensor.%(prefix)s_now_playing|artwork
   commands:
     volume_set:
       action: number.set_value
@@ -70,6 +77,14 @@ _MEDIA_PLAYER_YAML = '''\
       action: button.press
       target:
         entity_id: button.%(prefix)s_play_pause
+    media_next_track:
+      action: button.press
+      target:
+        entity_id: button.%(prefix)s_next_track
+    media_previous_track:
+      action: button.press
+      target:
+        entity_id: button.%(prefix)s_previous_track
 '''
 
 _YANDEX_YAML = '''\
@@ -83,6 +98,7 @@ media_player.%(device_id)s:
     - volume_mute
     - volume_set
     - play_pause
+    - next_previous_track
   custom_ranges:
     volume:
       state_entity_id: number.%(prefix)s_volume
