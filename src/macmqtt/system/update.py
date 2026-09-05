@@ -37,15 +37,30 @@ def brew_path():
     return None
 
 
-def upgrade_and_relaunch():
-    # Detached: survives this process quitting (NSApp.terminate_ right
-    # after this call). File replacement works fine on a running .app
-    # (proven all session via manual rm -rf + cp -R) — the point of
-    # quitting first isn't the upgrade itself, it's so the final `open`
-    # starts the NEW code instead of just refocusing the old process.
+def run_upgrade():
+    # Blocking on purpose — the old fire-and-forget version quit the app
+    # immediately and let `brew upgrade` (which downloads the whole .app,
+    # can take a while) run detached in the background. From the user's
+    # side that just looked like the app crashed and vanished with no
+    # feedback. Caller is expected to run this off the main thread and
+    # show progress, then only quit+relaunch once it actually returns.
     brew = brew_path()
-    script = f'{brew} upgrade --cask macmqtt; open -a "{APP_PATH}"'
-    subprocess.Popen(["/bin/sh", "-c", script], start_new_session=True)
+    try:
+        result = subprocess.run(
+            [brew, "upgrade", "--cask", "macmqtt"],
+            capture_output=True,
+            text=True,
+            timeout=300,
+        )
+    except subprocess.TimeoutExpired:
+        return False, "brew upgrade завис (5+ минут) — проверь вручную в терминале."
+    if result.returncode != 0:
+        return False, result.stderr.strip() or result.stdout.strip() or "brew upgrade завершился с ошибкой."
+    return True, ""
+
+
+def relaunch():
+    subprocess.Popen(["open", "-a", APP_PATH])
 
 
 def open_release_page():
