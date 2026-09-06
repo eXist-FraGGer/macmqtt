@@ -15,7 +15,7 @@ from AppKit import (
 )
 from Foundation import NSObject
 
-from . import about_tab, general_tab, help_tab, permissions_tab, sources_tab, widgets
+from . import about_tab, general_tab, help_tab, nowplaying_tab, permissions_tab, sources_tab, widgets
 from .constants import CONTENT_W, PAD, SECTIONS, SIDEBAR_MARGIN, SIDEBAR_ROW_H, SIDEBAR_W, WIN_H, WIN_W
 
 
@@ -73,6 +73,7 @@ class SettingsController(NSObject):
         self.sections = {
             "general": general_tab.build(self, cfg, CONTENT_W, WIN_H),
             "sources": sources_tab.build(self, cfg, CONTENT_W, WIN_H),
+            "nowplaying": nowplaying_tab.build(self, CONTENT_W, WIN_H),
             "permissions": permissions_tab.build(self, CONTENT_W, WIN_H),
             "help": help_tab.build(self, CONTENT_W, WIN_H),
             "about": about_tab.build(self, CONTENT_W, WIN_H),
@@ -98,11 +99,14 @@ class SettingsController(NSObject):
 
     @objc.python_method
     def _select_section(self, identifier):
+        nowplaying_tab.stop_auto_refresh(self)
         for view in self.content_container.subviews():
             view.removeFromSuperview()
         self.content_container.addSubview_(self.sections[identifier])
         for section_id, row in self.sidebar_rows.items():
             row.set_selected(section_id == identifier)
+        if identifier == "nowplaying":
+            nowplaying_tab.start_auto_refresh(self)
 
     def selectSidebarRow_(self, row):
         self._select_section(row.row_identifier)
@@ -122,6 +126,7 @@ class SettingsController(NSObject):
         self.window.orderFrontRegardless()
 
     def windowWillClose_(self, notification):
+        nowplaying_tab.stop_auto_refresh(self)
         NSApp.setActivationPolicy_(NSApplicationActivationPolicyAccessory)
 
     def save_(self, sender):
@@ -147,6 +152,15 @@ class SettingsController(NSObject):
 
     def clearSource_(self, sender):
         sources_tab.clear_source(self, sender)
+
+    def tapPrevious_(self, sender):
+        nowplaying_tab.tap_previous(self, sender)
+
+    def tapPlayPause_(self, sender):
+        nowplaying_tab.tap_play_pause(self, sender)
+
+    def tapNext_(self, sender):
+        nowplaying_tab.tap_next(self, sender)
 
     def checkPermission_(self, sender):
         permissions_tab.check_permission(self, sender)

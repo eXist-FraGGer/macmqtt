@@ -41,14 +41,21 @@ _MEDIA_PLAYER_YAML = '''\
   unique_id: %(device_id)s_media_player
   device_class: tv
   # Real state now (Music/Spotify/Safari/Chromium — see features/nowplaying.py),
-  # not a guess: "playing" or "idle", whichever the sensor below reports.
+  # not a guess: "playing"/"paused"/"idle", whichever the sensor below reports.
   state_template: "{{ states('sensor.%(prefix)s_now_playing') }}"
+  # media_title/media_artist/media_album_name are NOT read through
+  # `attributes:` below — Universal's own source (_child_attr, in HA core's
+  # universal/media_player.py) only pulls those three from a real child
+  # entity's state attributes, ignoring any override for them specifically
+  # (unlike volume_level/is_volume_muted/entity_picture, which do use the
+  # override and worked fine without this). Pointing active_child_template
+  # at our own sensor makes Universal treat it as that child, so those
+  # three finally read from its attributes too — without this, they always
+  # come back empty no matter what attributes: says.
+  active_child_template: "sensor.%(prefix)s_now_playing"
   attributes:
     volume_level: sensor.%(device_id)s_volume_fraction
     is_volume_muted: switch.%(prefix)s_mute
-    media_title: sensor.%(prefix)s_now_playing|title
-    media_artist: sensor.%(prefix)s_now_playing|artist
-    media_album_name: sensor.%(prefix)s_now_playing|album
     entity_picture: sensor.%(prefix)s_now_playing|artwork
   commands:
     volume_set:
@@ -74,6 +81,17 @@ _MEDIA_PLAYER_YAML = '''\
       target:
         entity_id: button.%(prefix)s_play_pause
     media_pause:
+      action: button.press
+      target:
+        entity_id: button.%(prefix)s_play_pause
+    # Universal treats this as its own command, not an automatic
+    # combination of media_play/media_pause (see HA core's
+    # universal/media_player.py _async_call_service — media_play_pause
+    # only resolves via a real child entity's own service otherwise, which
+    # we don't have) — cards/dashboards that call the single toggle
+    # service (e.g. mini-media-player's main button) silently no-op
+    # without this exact key.
+    media_play_pause:
       action: button.press
       target:
         entity_id: button.%(prefix)s_play_pause

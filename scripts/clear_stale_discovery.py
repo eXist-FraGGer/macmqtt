@@ -1,9 +1,8 @@
-"""One-off cleanup for orphaned MQTT discovery entities (e.g.
-button.macbook_lineage2m). retain=True on discovery configs means the
-broker keeps every version ever published forever, across every rename /
-unique_id scheme this project has been through — HA re-adopts them any
-time it resubscribes, even after deleting the device in HA itself (that
-only clears HA's registry, not the broker).
+"""One-off cleanup for orphaned MQTT discovery entities. retain=True on
+discovery configs means the broker keeps every version ever published
+forever, across every rename/unique_id scheme this project has been
+through — HA re-adopts them any time it resubscribes, even after deleting
+the device in HA itself (that only clears HA's registry, not the broker).
 
 Run once from the repo root after an entity id scheme changes:
     venv/bin/python3 scripts/clear_stale_discovery.py
@@ -46,7 +45,7 @@ def on_connect(client, userdata, flags, rc):
 def on_message(client, userdata, msg):
     if not msg.payload:
         return
-    if device_id in msg.topic or "lineage2m" in msg.topic.lower():
+    if device_id in msg.topic:
         seen.add(msg.topic)
 
 

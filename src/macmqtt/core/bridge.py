@@ -13,7 +13,11 @@ from ..features import nowplaying, sound, source
 # adding it here — nothing else in this file changes.
 FEATURES = (sound, source, nowplaying)
 
-POLL_INTERVAL = 3
+# Shared cadence for every feature's poll() — nowplaying wants this fast
+# (reacting to a manual pause/play click made directly in a browser, which
+# we can't hook into, only poll for — see features/nowplaying.py), and
+# volume/mute polling is cheap enough to ride along at the same rate.
+POLL_INTERVAL = 1
 
 
 def host_kind(host):

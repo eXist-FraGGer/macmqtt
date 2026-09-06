@@ -29,6 +29,7 @@ PERMISSION_GROUPS = (
 SECTIONS = (
     ("general", "Общие", "gearshape"),
     ("sources", "Источник", "square.grid.2x2"),
+    ("nowplaying", "Проигрывание", "music.note"),
     ("permissions", "Разрешения", "lock.shield"),
     ("help", "Помощь", "questionmark.circle"),
     ("about", "О программе", "info.circle"),

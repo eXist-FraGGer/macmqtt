@@ -18,7 +18,7 @@ DEFAULTS = {
     # kind == "app" -> activate bundle_id; kind == "shortcut" -> run the
     # named Shortcuts.app scenario. Slot is unset when kind == "". Maps
     # 1:1 onto Yandex's fixed mode vocabulary (one..ten) for
-    # devices.capabilities.mode — see bridge.py SOURCE_SLUGS.
+    # devices.capabilities.mode — see helpers/hass.py SOURCE_SLUGS.
     "sources": [{"name": "", "kind": "", "bundle_id": "", "shortcut": ""} for _ in range(10)],
 }
 

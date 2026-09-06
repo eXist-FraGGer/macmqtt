@@ -1,8 +1,15 @@
 # macmqtt — MQTT-мост для управления Mac
 
-Громкость, мьют, play/pause, запуск приложений и Shortcuts — из любого MQTT-хаба (HA, Sprut.hub, Node-RED). Протокол: [PROTOCOL.md](PROTOCOL.md).
+Громкость, мьют, play/pause/next/prev, Now Playing (заголовок/исполнитель/обложка), запуск приложений и Shortcuts — из любого MQTT-хаба (HA, Sprut.hub, Node-RED). Протокол: [PROTOCOL.md](PROTOCOL.md).
 
 ## Установка
+
+```bash
+brew tap eXist-FraGGer/macmqtt
+brew install --cask macmqtt
+```
+
+Или из исходников:
 
 ```bash
 python3 -m venv venv
@@ -37,7 +44,3 @@ Discovery включён по умолчанию — устройство «MacB
 «Алиса, тише на маке», «громче», «поставь звук на маке 30», «выключи звук на маке».
 
 Без GUI (headless, автозапуск через launchd): [ADVANCED.md](ADVANCED.md).
-
-## Brew
-
-Планируется Cask, пока не реализовано.

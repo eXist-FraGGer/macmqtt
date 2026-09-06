@@ -13,8 +13,8 @@ OPTIONS = {
         "CFBundleIdentifier": "com.macmqtt.app",
         "CFBundleName": "macmqtt",
         "CFBundleDisplayName": "macmqtt",
-        "CFBundleShortVersionString": "0.2.2",
-        "CFBundleVersion": "0.2.2",
+        "CFBundleShortVersionString": "0.2.3",
+        "CFBundleVersion": "0.2.3",
         "NSHumanReadableCopyright": "Copyright © eXist-FraGGer, 2026",
         # Menu bar only app: no Dock icon, no app switcher entry.
         "LSUIElement": True,
