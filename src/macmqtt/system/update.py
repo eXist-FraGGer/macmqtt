@@ -127,17 +127,18 @@ def run_upgrade(on_progress=None, on_phase=None):
 
 
 def relaunch():
-    # `open -a` while our own (same bundle id) process is still alive —
-    # even mid-quit — doesn't launch a second instance, it just activates
-    # the existing one; that instance then quits, leaving nothing running.
-    # Reproduced live: `open -a` immediately followed by quitting ourselves
-    # left zero macmqtt processes, every time. A detached watcher that
-    # waits for our own pid to actually exit before calling `open -a` sees
-    # no running instance by the time it runs, so that same `open -a`
-    # genuinely launches fresh — verified live too (new pid appears within
-    # ~1s of the old one exiting).
+    # `open -a` treats our own (same bundle id) process as "already
+    # running" and just activates it instead of launching a second one —
+    # true even mid-quit, and even with a wait-for-exit watcher first, and
+    # even with `-n` (force new instance): all three reproduced live as
+    # either zero or still-the-old-pid processes running afterward.
+    # LaunchServices' bundle-based activation logic is the actual problem,
+    # not timing — so this bypasses it entirely and execs the binary
+    # directly. Verified live: clean pid swap within ~1s, confirmed via
+    # `pgrep -x macmqtt` showing exactly one (new) process afterward.
+    binary = os.path.join(APP_PATH, "Contents/MacOS/macmqtt")
     subprocess.Popen(
-        ["/bin/sh", "-c", f"while kill -0 {os.getpid()} 2>/dev/null; do sleep 0.2; done; open -a '{APP_PATH}'"],
+        ["/bin/sh", "-c", f"while kill -0 {os.getpid()} 2>/dev/null; do sleep 0.2; done; '{binary}' >/dev/null 2>&1 &"],
         start_new_session=True,
     )
 
