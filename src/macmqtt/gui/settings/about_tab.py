@@ -12,7 +12,7 @@ from AppKit import (
     NSLineBreakByWordWrapping,
     NSMakeRect,
     NSProgressIndicator,
-    NSProgressIndicatorStyleSpinning,
+    NSProgressIndicatorStyleBar,
     NSView,
     NSWindow,
     NSWindowStyleMaskClosable,
@@ -140,36 +140,71 @@ def _show_progress_window():
     win.center()
     content = win.contentView()
 
-    label = widgets.label(NSMakeRect(20, 55, 260, 20), "Загрузка обновления…", center=True)
+    label = widgets.label(NSMakeRect(20, 55, 260, 20), "Скачивание обновления…", center=True)
     content.addSubview_(label)
 
-    spinner = NSProgressIndicator.alloc().initWithFrame_(NSMakeRect(130, 20, 40, 20))
-    spinner.setStyle_(NSProgressIndicatorStyleSpinning)
-    spinner.setIndeterminate_(True)
-    spinner.startAnimation_(None)
-    content.addSubview_(spinner)
+    # Real byte progress during the download (update.run_upgrade downloads
+    # the zip itself instead of leaving it to brew, specifically so this
+    # can show an actual percentage) — switches to indeterminate for the
+    # brief install step afterward, where there's nothing to measure.
+    bar = NSProgressIndicator.alloc().initWithFrame_(NSMakeRect(20, 30, 260, 16))
+    bar.setStyle_(NSProgressIndicatorStyleBar)
+    bar.setMinValue_(0)
+    bar.setMaxValue_(100)
+    bar.setIndeterminate_(False)
+    bar.setDoubleValue_(0)
+    content.addSubview_(bar)
 
+    # NSWindow isn't ours to subclass here — a plain dict avoids trying to
+    # stash Python attributes on a bare AppKit object.
     NSApp.activateIgnoringOtherApps_(True)
     win.makeKeyAndOrderFront_(None)
-    return win
+    return {"window": win, "label": label, "bar": bar}
 
 
 def _run_upgrade_with_progress():
-    progress_win = _show_progress_window()
+    progress = _show_progress_window()
+
+    def on_progress(done, total):
+        if not total:
+            return
+        pct = min(100, int(done * 100 / total))
+        AppHelper.callAfter(_set_progress, progress, pct)
+
+    def on_phase(text):
+        AppHelper.callAfter(_set_phase, progress, text)
 
     def worker():
-        ok, message = update.run_upgrade()
-        AppHelper.callAfter(_upgrade_finished, progress_win, ok, message)
+        ok, message = update.run_upgrade(on_progress=on_progress, on_phase=on_phase)
+        AppHelper.callAfter(_upgrade_finished, progress, ok, message)
 
     threading.Thread(target=worker, daemon=True).start()
 
 
-def _upgrade_finished(progress_win, ok, message):
+def _set_progress(progress, pct):
+    bar = progress["bar"]
+    if bar.isIndeterminate():
+        bar.setIndeterminate_(False)
+        bar.stopAnimation_(None)
+    bar.setDoubleValue_(pct)
+    progress["label"].setStringValue_(f"Скачивание обновления… {pct}%")
+
+
+def _set_phase(progress, text):
+    progress["label"].setStringValue_(text)
+    if text.startswith("Устанавл"):
+        bar = progress["bar"]
+        bar.setIndeterminate_(True)
+        bar.startAnimation_(None)
+
+
+def _upgrade_finished(progress, ok, message):
     # User may have already closed the (now closable) progress window
     # themselves while brew kept running in the background — respect that
     # instead of popping up a restart prompt for a wait they bailed on.
-    dismissed = not progress_win.isVisible()
-    progress_win.close()
+    win = progress["window"]
+    dismissed = not win.isVisible()
+    win.close()
     if dismissed:
         return
     if not ok:
