@@ -15,6 +15,7 @@ from AppKit import (
     NSProgressIndicatorStyleSpinning,
     NSView,
     NSWindow,
+    NSWindowStyleMaskClosable,
     NSWindowStyleMaskTitled,
 )
 from PyObjCTools import AppHelper
@@ -126,8 +127,14 @@ def _show_progress_window():
     # instant it kicked this off, so from the user's side the app just
     # vanished with no explanation until the download finished in the
     # background. This keeps the app visibly alive and working instead.
+    # Closable: brew upgrade can hang well past actually finishing (known
+    # issue — a helper process it spawns can hold its output pipe open,
+    # see run_upgrade()'s comment), and this used to have no way out of the
+    # wait at all. The red close button lets the user bail without force-
+    # quitting the whole app; _upgrade_finished() checks isVisible() and
+    # skips the restart prompt if they already dismissed this.
     win = NSWindow.alloc().initWithContentRect_styleMask_backing_defer_(
-        NSMakeRect(0, 0, 300, 100), NSWindowStyleMaskTitled, NSBackingStoreBuffered, False
+        NSMakeRect(0, 0, 300, 100), NSWindowStyleMaskTitled | NSWindowStyleMaskClosable, NSBackingStoreBuffered, False
     )
     win.setTitle_("Обновление macmqtt")
     win.center()
@@ -158,7 +165,13 @@ def _run_upgrade_with_progress():
 
 
 def _upgrade_finished(progress_win, ok, message):
+    # User may have already closed the (now closable) progress window
+    # themselves while brew kept running in the background — respect that
+    # instead of popping up a restart prompt for a wait they bailed on.
+    dismissed = not progress_win.isVisible()
     progress_win.close()
+    if dismissed:
+        return
     if not ok:
         widgets.show_info_popup("Не удалось обновить", [(message or "Неизвестная ошибка.", False)])
         return

@@ -1,6 +1,7 @@
 import json
 import os
 import subprocess
+import tempfile
 import urllib.request
 
 import macmqtt
@@ -44,18 +45,28 @@ def run_upgrade():
     # side that just looked like the app crashed and vanished with no
     # feedback. Caller is expected to run this off the main thread and
     # show progress, then only quit+relaunch once it actually returns.
+    #
+    # stdout/stderr go to real temp files, not PIPE: brew's cask install
+    # step can spawn a helper (Spotlight reindex, lsregister, ...) that
+    # inherits the pipe's write end and outlives brew itself — with PIPE,
+    # subprocess.run() then blocks waiting for EOF that never comes, well
+    # past brew actually finishing (confirmed live: Caskroom + /Applications
+    # already showed the new version while this was still "running").
+    # A file has no such "wait for the writer to close it" behavior.
     brew = brew_path()
-    try:
-        result = subprocess.run(
-            [brew, "upgrade", "--cask", "macmqtt"],
-            capture_output=True,
-            text=True,
-            timeout=300,
-        )
-    except subprocess.TimeoutExpired:
-        return False, "brew upgrade завис (5+ минут) — проверь вручную в терминале."
-    if result.returncode != 0:
-        return False, result.stderr.strip() or result.stdout.strip() or "brew upgrade завершился с ошибкой."
+    with tempfile.TemporaryFile(mode="w+", encoding="utf-8") as out:
+        try:
+            result = subprocess.run(
+                [brew, "upgrade", "--cask", "macmqtt"],
+                stdout=out,
+                stderr=subprocess.STDOUT,
+                timeout=300,
+            )
+        except subprocess.TimeoutExpired:
+            return False, "brew upgrade завис (5+ минут) — проверь вручную в терминале."
+        if result.returncode != 0:
+            out.seek(0)
+            return False, out.read().strip() or "brew upgrade завершился с ошибкой."
     return True, ""
 
 
