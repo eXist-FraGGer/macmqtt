@@ -1,6 +1,6 @@
 [project]
 name = "macmqtt"
-version = "0.2.7"
+version = "0.2.8"
 description = "MQTT-мост для управления Mac (громкость/мьют) из любого умного дома"
 requires-python = ">=3.9"
 dependencies = [
