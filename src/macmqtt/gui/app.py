@@ -7,6 +7,7 @@ import rumps
 from . import settings as settings_window
 from ..core import config as cfgmod
 from ..core.bridge import run as bridge_run
+from ..system import permission
 
 PACKAGE_DIR = os.path.dirname(os.path.dirname(__file__))
 ICON_PATH = os.path.join(PACKAGE_DIR, "assets", "icon_menubar.png")
@@ -67,6 +68,19 @@ class MacMqttBridgeApp(rumps.App):
 
         if cfgmod.load()["mqtt_host"]:
             self.start_bridge()
+
+        # Accessibility is the one permission volume/mute/media-key control
+        # actually depends on (osascript's "set volume" doesn't need it,
+        # the CGEventPost media-key taps do) — a yellow dot next to the
+        # tray icon surfaces "this is why it stopped working" without
+        # requiring a trip into Settings to notice. Ad-hoc-signed rebuilds
+        # can silently lose this permission on update (see permissions_tab's
+        # note), so it's worth checking periodically, not just at launch.
+        self._permission_timer = rumps.Timer(self._check_permission_badge, 15)
+        self._permission_timer.start()
+
+    def _check_permission_badge(self, sender=None):
+        self.title = None if permission.accessibility_trusted() else "🟡"
 
     def toggle(self, sender):
         if self._thread and self._thread.is_alive():

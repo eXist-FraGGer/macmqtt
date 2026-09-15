@@ -3,7 +3,16 @@ import subprocess
 from AppKit import NSColor, NSFont, NSLineBreakByWordWrapping, NSMakeRect, NSTextField, NSView
 
 from . import widgets
-from .constants import BTN_H, DOT_FRAME_SIZE, HINT_H, PAD, PERMISSION_GROUP_H, PERMISSION_GROUPS, STATUS_DOT_SIZE
+from .constants import (
+    BTN_H,
+    DOT_FRAME_SIZE,
+    HINT_H,
+    NOTE_H,
+    PAD,
+    PERMISSION_GROUP_H,
+    PERMISSION_GROUPS,
+    STATUS_DOT_SIZE,
+)
 
 
 def build(controller, w, h):
@@ -44,6 +53,23 @@ def _build_permission_group(controller, view, top_y, w, index, group):
     open_btn = widgets.button(NSMakeRect(PAD + 170 + 12, row2_y, 140, BTN_H), "Открыть настройки", controller, "openSettings:")
     open_btn.setTag_(index)
     view.addSubview_(open_btn)
+
+    # Row 4: ad-hoc-signed builds (no Apple Developer certificate) get a
+    # new code signature every release — macOS's permission database can
+    # then keep the old, now-stale entry looking "granted" while it no
+    # longer actually applies to the updated binary. Toggling it off/on
+    # doesn't always fix that; removing and re-adding does.
+    note_y = row2_y - 8 - NOTE_H
+    note = widgets.label(
+        NSMakeRect(PAD, note_y, w - PAD * 2, NOTE_H),
+        "После обновления разрешение может выглядеть включённым, но не работать. Если громкость/пауза/"
+        "некст не реагируют — удали «macmqtt» из списка ниже и добавь заново.",
+    )
+    note.setTextColor_(NSColor.tertiaryLabelColor())
+    note.setFont_(NSFont.systemFontOfSize_(10))
+    note.cell().setWraps_(True)
+    note.cell().setLineBreakMode_(NSLineBreakByWordWrapping)
+    view.addSubview_(note)
 
     return top_y - PERMISSION_GROUP_H
 

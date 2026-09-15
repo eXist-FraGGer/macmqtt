@@ -64,9 +64,10 @@ _SOURCES_H = PAD + SRC_ROW_H * len(SOURCE_SLUGS) + BTN_GAP + BTN_H + PAD
 # the rest getting extra bottom whitespace.
 WIN_H = max(_GENERAL_H, _SOURCES_H)
 
-# Height one permission group (title + hint + buttons) takes on the Permissions section.
+# Height one permission group (title + hint + buttons + update-note) takes on the Permissions section.
 HINT_H = 30
-PERMISSION_GROUP_H = 116
+NOTE_H = 58
+PERMISSION_GROUP_H = 186
 STATUS_DOT_SIZE = 14
 DOT_FRAME_SIZE = 22
 
