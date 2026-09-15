@@ -153,6 +153,9 @@ class SettingsController(NSObject):
     def clearSource_(self, sender):
         sources_tab.clear_source(self, sender)
 
+    def playSource_(self, sender):
+        sources_tab.play_source(self, sender)
+
     def tapPrevious_(self, sender):
         nowplaying_tab.tap_previous(self, sender)
 
@@ -161,6 +164,12 @@ class SettingsController(NSObject):
 
     def tapNext_(self, sender):
         nowplaying_tab.tap_next(self, sender)
+
+    def toggleMute_(self, sender):
+        nowplaying_tab.toggle_mute(self, sender)
+
+    def volumeSliderChanged_(self, sender):
+        nowplaying_tab.volume_slider_changed(self, sender)
 
     def checkPermission_(self, sender):
         permissions_tab.check_permission(self, sender)

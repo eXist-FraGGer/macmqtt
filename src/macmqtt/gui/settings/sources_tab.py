@@ -1,5 +1,6 @@
 import os
 import subprocess
+import threading
 
 from AppKit import (
     NSAlert,
@@ -49,9 +50,10 @@ def build(controller, cfg, w, h):
 
     label_w = 95
     pick_w = 78
+    play_w = 22
     clear_w = 22
     gap = 6
-    name_w = inner_w - label_w - pick_w - clear_w - gap * 3
+    name_w = inner_w - label_w - pick_w - play_w - clear_w - gap * 4
 
     y = h - PAD - FIELD_H
     for i in range(len(SOURCE_SLUGS)):
@@ -69,7 +71,16 @@ def build(controller, cfg, w, h):
         pick_btn.setTag_(i)
         view.addSubview_(pick_btn)
 
-        clear_btn = widgets.info_button(NSMakeRect(pick_x + pick_w + gap, y, clear_w, FIELD_H), controller, "clearSource:")
+        play_x = pick_x + pick_w + gap
+        # Runs the source directly (bypasses MQTT/HA entirely) — same
+        # activate_app()/run_shortcut() core/bridge.py's handle() calls, so
+        # this is a genuine end-to-end test of "does this source work".
+        play_btn = widgets.info_button(NSMakeRect(play_x, y, play_w, FIELD_H), controller, "playSource:")
+        play_btn.setImage_(NSImage.imageWithSystemSymbolName_accessibilityDescription_("play.fill", None))
+        play_btn.setTag_(i)
+        view.addSubview_(play_btn)
+
+        clear_btn = widgets.info_button(NSMakeRect(play_x + play_w + gap, y, clear_w, FIELD_H), controller, "clearSource:")
         clear_btn.setImage_(NSImage.imageWithSystemSymbolName_accessibilityDescription_("xmark.circle", None))
         clear_btn.setTag_(i)
         view.addSubview_(clear_btn)
@@ -163,6 +174,21 @@ def _pick_shortcut(controller, index):
     name = str(popup.titleOfSelectedItem())
     controller.source_slots[index] = {"name": name, "kind": "shortcut", "bundle_id": "", "shortcut": name}
     update_source_label(controller, index)
+
+
+def play_source(controller, sender):
+    index = sender.tag()
+    slot = controller.source_slots[index]
+    kind = slot.get("kind")
+    if kind == "app" and slot.get("bundle_id"):
+        threading.Thread(target=source.activate_app, args=(slot["bundle_id"],), daemon=True).start()
+    elif kind == "shortcut" and slot.get("shortcut"):
+        threading.Thread(target=source.run_shortcut, args=(slot["shortcut"],), daemon=True).start()
+    else:
+        widgets.show_info_popup(
+            f"Источник {index + 1} не выбран",
+            [("Сначала выбери приложение или ярлык кнопкой «Выбрать…».", False)],
+        )
 
 
 def clear_source(controller, sender):

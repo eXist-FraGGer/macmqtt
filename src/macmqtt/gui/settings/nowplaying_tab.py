@@ -2,6 +2,8 @@ import threading
 import time
 
 from AppKit import (
+    NSButton,
+    NSButtonTypePushOnPushOff,
     NSColor,
     NSData,
     NSFont,
@@ -9,6 +11,7 @@ from AppKit import (
     NSImageView,
     NSLineBreakByWordWrapping,
     NSMakeRect,
+    NSSlider,
     NSTimer,
     NSURL,
     NSView,
@@ -81,7 +84,74 @@ def build(controller, w, h):
         widgets.button(NSMakeRect(PAD + (ctrl_w + ctrl_gap) * 2, y, ctrl_w, BTN_H), "⏭", controller, "tapNext:")
     )
 
+    # Volume/mute — same sound.* calls bridge.py itself uses, so this row is
+    # a genuine end-to-end test of what HA's number/switch entities do,
+    # not a mockup. Read once here for the very first draw; start_auto_refresh()
+    # re-syncs it each time this tab is opened (build() itself only runs once).
+    y -= 16 + 24
+    row_h = 24
+    mute_w = row_h
+    percent_w = 38
+    gap = 8
+    slider_w = inner_w - mute_w - percent_w - gap * 2
+
+    controller.np_muted = sound.get_muted()
+    mute_btn = NSButton.alloc().initWithFrame_(NSMakeRect(PAD, y, mute_w, row_h))
+    mute_btn.setButtonType_(NSButtonTypePushOnPushOff)
+    mute_btn.setBordered_(False)
+    mute_btn.setState_(1 if controller.np_muted else 0)
+    mute_btn.setImage_(_mute_icon(controller.np_muted))
+    mute_btn.setTarget_(controller)
+    mute_btn.setAction_("toggleMute:")
+    controller.np_mute_button = mute_btn
+    view.addSubview_(mute_btn)
+
+    slider = NSSlider.alloc().initWithFrame_(NSMakeRect(PAD + mute_w + gap, y, slider_w, row_h))
+    slider.setMinValue_(0)
+    slider.setMaxValue_(100)
+    slider.setIntValue_(sound.get_volume())
+    slider.setContinuous_(True)
+    slider.setTarget_(controller)
+    slider.setAction_("volumeSliderChanged:")
+    controller.np_volume_slider = slider
+    view.addSubview_(slider)
+
+    percent_lbl = widgets.label(
+        NSMakeRect(PAD + mute_w + gap + slider_w + gap, y, percent_w, row_h),
+        f"{slider.intValue()}%",
+    )
+    controller.np_volume_label = percent_lbl
+    view.addSubview_(percent_lbl)
+
     return view
+
+
+def _mute_icon(muted):
+    name = "speaker.slash.fill" if muted else "speaker.wave.2.fill"
+    return NSImage.imageWithSystemSymbolName_accessibilityDescription_(name, None)
+
+
+def toggle_mute(controller, sender):
+    muted = sender.state() == 1
+    controller.np_muted = muted
+    sender.setImage_(_mute_icon(muted))
+    sound.set_muted(muted)
+
+
+def volume_slider_changed(controller, sender):
+    value = int(sender.intValue())
+    controller.np_volume_label.setStringValue_(f"{value}%")
+    sound.set_volume(value)
+
+
+def _refresh_volume_display(controller):
+    muted = sound.get_muted()
+    controller.np_muted = muted
+    controller.np_mute_button.setState_(1 if muted else 0)
+    controller.np_mute_button.setImage_(_mute_icon(muted))
+    volume = sound.get_volume()
+    controller.np_volume_slider.setIntValue_(volume)
+    controller.np_volume_label.setStringValue_(f"{volume}%")
 
 
 def tap_previous(controller, sender):
@@ -119,6 +189,7 @@ def start_auto_refresh(controller):
     # since this always runs, one would just duplicate what's already
     # happening a second later on its own.
     stop_auto_refresh(controller)
+    _refresh_volume_display(controller)
     _check_now_playing(controller)
     controller.np_timer = NSTimer.scheduledTimerWithTimeInterval_repeats_block_(
         nowplaying.CHECK_INTERVAL, True, lambda timer: _check_now_playing(controller)
