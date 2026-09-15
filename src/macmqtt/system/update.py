@@ -127,12 +127,19 @@ def run_upgrade(on_progress=None, on_phase=None):
 
 
 def relaunch():
-    # run(), not Popen(): waits for `open` to actually hand the app off to
-    # LaunchServices before the caller quits itself. Popen() (fire and
-    # forget) let the caller terminate before `open` necessarily finished,
-    # which — together with the quarantine flag above — could leave the
-    # app not actually relaunched (observed live).
-    subprocess.run(["open", "-a", APP_PATH])
+    # `open -a` while our own (same bundle id) process is still alive —
+    # even mid-quit — doesn't launch a second instance, it just activates
+    # the existing one; that instance then quits, leaving nothing running.
+    # Reproduced live: `open -a` immediately followed by quitting ourselves
+    # left zero macmqtt processes, every time. A detached watcher that
+    # waits for our own pid to actually exit before calling `open -a` sees
+    # no running instance by the time it runs, so that same `open -a`
+    # genuinely launches fresh — verified live too (new pid appears within
+    # ~1s of the old one exiting).
+    subprocess.Popen(
+        ["/bin/sh", "-c", f"while kill -0 {os.getpid()} 2>/dev/null; do sleep 0.2; done; open -a '{APP_PATH}'"],
+        start_new_session=True,
+    )
 
 
 def open_release_page():
